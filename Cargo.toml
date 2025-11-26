@@ -23,6 +23,7 @@ bevy = { version = "0.17", default-features = false, features = [
     "bevy_color",
     "bevy_render",
     "bevy_image",
+    "bevy_state",
     "png",
 
     "bevy_sprite",
@@ -47,12 +48,15 @@ bevy = { version = "0.17", default-features = false, features = [
     "zstd_rust",
 ] }
 
-bevy_asset_loader = "0.24"
+bevy_asset_loader = "0.24.0-rc.1"
 bevy_replicon = "0.36"
 bevy_seedling = "0.6"
 bevy-panic-handler = "6.0"
 bevy_egui = "0.38"
 bevy-inspector-egui = "0.35"
+bevy_enhanced_input = "0.20"
+bevy_ecs_tilemap = "0.17"
+bevy_modern_pixel_camera = "0.4"
 
 [profile.dev.package."*"]
 opt-level = 3

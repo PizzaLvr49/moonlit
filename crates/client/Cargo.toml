@@ -9,6 +9,10 @@ bevy-panic-handler = { workspace = true }
 bevy_seedling = { workspace = true }
 bevy_egui = { workspace = true }
 bevy-inspector-egui = { workspace = true }
+bevy_enhanced_input = { workspace = true }
+bevy_ecs_tilemap = { workspace = true }
+bevy_asset_loader = { workspace = true }
+bevy_modern_pixel_camera = { workspace = true }
 
 [features]
 default = []

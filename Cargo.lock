@@ -168,6 +168,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "anyhow"
+version = "1.0.100"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a23eb6b1614318a8071c9b2521f36b424b2c83db5eb3a0fead4a6c0809af6e61"
+
+[[package]]
 name = "approx"
 version = "0.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -192,7 +198,7 @@ dependencies = [
  "objc2-foundation 0.3.2",
  "parking_lot",
  "percent-encoding",
- "windows-sys 0.59.0",
+ "windows-sys 0.60.2",
  "x11rb",
 ]
 
@@ -495,6 +501,36 @@ dependencies = [
 ]
 
 [[package]]
+name = "bevy_asset_loader"
+version = "0.24.0-rc.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e56df6f9fe3d4fd545e5f589425f335e0fad791d2a4fb88ba13ffab19d847ab7"
+dependencies = [
+ "anyhow",
+ "bevy_app",
+ "bevy_asset",
+ "bevy_asset_loader_derive",
+ "bevy_ecs",
+ "bevy_log",
+ "bevy_platform",
+ "bevy_reflect",
+ "bevy_state",
+ "bevy_utils",
+ "path-slash",
+]
+
+[[package]]
+name = "bevy_asset_loader_derive"
+version = "0.24.0-rc.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "24f3cb09b9d0b15f5a5a914b737aee6ba3292e878dafd8f22a4e174fe06efb64"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
 name = "bevy_asset_macros"
 version = "0.17.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -655,6 +691,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "bevy_ecs_tilemap"
+version = "0.17.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0a7176ff40586face39666fab2c3692c62bd5de67987164e6d8b316bc19e27d7"
+dependencies = [
+ "bevy",
+ "log",
+]
+
+[[package]]
 name = "bevy_egui"
 version = "0.38.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -709,6 +755,31 @@ checksum = "7179e985f3f1b99265cb87fe194db3b00aee8e2914888d621ff9826e1417ee19"
 dependencies = [
  "bevy_macro_utils",
  "encase_derive_impl",
+]
+
+[[package]]
+name = "bevy_enhanced_input"
+version = "0.20.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cb3567d87ac6428fac9dc9a7528dce246ff976093d3374e86913189a6c2b34e8"
+dependencies = [
+ "bevy",
+ "bevy_enhanced_input_macros",
+ "bitflags 2.10.0",
+ "log",
+ "smallvec",
+ "variadics_please",
+]
+
+[[package]]
+name = "bevy_enhanced_input_macros"
+version = "0.20.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5c5e66100683f533c85365444c3b5a7fba4df5504582d5f30780486fd7695832"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
 ]
 
 [[package]]
@@ -974,6 +1045,15 @@ name = "bevy_mikktspace"
 version = "0.17.0-dev"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7ef8e4b7e61dfe7719bb03c884dc270cd46a82efb40f93e9933b990c5c190c59"
+
+[[package]]
+name = "bevy_modern_pixel_camera"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cd764d6a0867fb6df545117fad479ed0e4afcccd730462f3e13a2b12536a91e8"
+dependencies = [
+ "bevy",
+]
 
 [[package]]
 name = "bevy_pbr"
@@ -3262,7 +3342,11 @@ dependencies = [
  "bevy",
  "bevy-inspector-egui",
  "bevy-panic-handler",
+ "bevy_asset_loader",
+ "bevy_ecs_tilemap",
  "bevy_egui",
+ "bevy_enhanced_input",
+ "bevy_modern_pixel_camera",
  "bevy_seedling",
 ]
 
@@ -3898,6 +3982,12 @@ name = "paste"
 version = "1.0.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "57c0d7b74b563b49d38dae00a0c37d4d6de9b432382b2892f0574ddcae73fd0a"
+
+[[package]]
+name = "path-slash"
+version = "0.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1e91099d4268b0e11973f036e885d652fb0b21fedcf69738c627f94db6a44f42"
 
 [[package]]
 name = "percent-encoding"
