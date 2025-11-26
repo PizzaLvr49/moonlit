@@ -1,0 +1,64 @@
+[workspace]
+members = ["crates/*"]
+resolver = "3"
+default-members = ["crates/client"]
+
+[workspace.dependencies]
+aeronet = "0.17"
+aeronet_replicon = "0.17"
+
+bevy = { version = "0.17", default-features = false, features = [
+    "std",
+    "async_executor",
+    "multi_threaded",
+    "bevy_log",
+    "reflect_auto_register",
+
+    "x11",
+    "wayland",
+
+    "bevy_window",
+    "bevy_winit",
+    "bevy_asset",
+    "bevy_color",
+    "bevy_render",
+    "bevy_image",
+    "png",
+
+    "bevy_sprite",
+    "bevy_sprite_render",
+    "bevy_camera",
+    "bevy_shader",
+
+    "bevy_input_focus",
+    "bevy_gilrs",
+
+    "bevy_ui",
+    "bevy_ui_render",
+    "bevy_text",
+    "default_font",
+    "bevy_picking",
+    "bevy_ui_picking_backend",
+    "bevy_sprite_picking_backend",
+
+    "custom_cursor",
+    "bevy_gizmos",
+    "debug",
+    "zstd_rust",
+] }
+
+bevy_asset_loader = "0.24"
+bevy_replicon = "0.36"
+bevy_seedling = "0.6"
+bevy-panic-handler = "6.0"
+bevy_egui = "0.38"
+bevy-inspector-egui = "0.35"
+
+[profile.dev.package."*"]
+opt-level = 3
+
+[profile.release]
+lto = "fat"
+codegen-units = 1
+panic = "abort"
+strip = "symbols"
