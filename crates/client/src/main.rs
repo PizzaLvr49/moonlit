@@ -1,4 +1,4 @@
-use bevy::math::Vec3Swizzles;
+use bevy::dev_tools::fps_overlay::{FpsOverlayConfig, FpsOverlayPlugin, FrameTimeGraphConfig};
 use bevy::platform::collections::HashSet;
 use bevy::prelude::*;
 use bevy::window::{PresentMode, WindowMode};
@@ -34,6 +34,21 @@ fn main() {
         .add_plugins(PanicHandlerBuilder::default().build())
         .add_plugins(PixelCameraPlugin)
         .add_plugins((EguiPlugin::default(), WorldInspectorPlugin::default()))
+        .add_plugins(FpsOverlayPlugin {
+            config: FpsOverlayConfig {
+                frame_time_graph_config: FrameTimeGraphConfig {
+                    min_fps: 30.0,
+                    target_fps: 60.0,
+                    ..default()
+                },
+                text_color: Color::WHITE,
+                text_config: TextFont {
+                    font_size: 42.0,
+                    ..default()
+                },
+                ..default()
+            },
+        })
         .init_state::<GameState>()
         .insert_resource(ChunkManager::default())
         .add_loading_state(
