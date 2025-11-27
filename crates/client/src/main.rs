@@ -12,11 +12,7 @@ use bevy_seedling::prelude::*;
 
 const TILE_SIZE: TilemapTileSize = TilemapTileSize { x: 16.0, y: 16.0 };
 const CHUNK_SIZE: UVec2 = UVec2 { x: 6, y: 6 };
-const RENDER_CHUNK_SIZE: UVec2 = UVec2 {
-    x: CHUNK_SIZE.x * 2,
-    y: CHUNK_SIZE.y,
-};
-const CHUNK_RENDER_DISTANCE: f32 = 800.0;
+const CHUNK_RENDER_DISTANCE: i32 = 3;
 
 fn main() {
     App::new()
@@ -131,12 +127,10 @@ fn spawn_chunk(commands: &mut Commands, game_assets: &GameAssets, chunk_pos: IVe
     let tilemap_entity = commands.spawn_empty().id();
     let mut tile_storage = TileStorage::empty(CHUNK_SIZE.into());
 
-    // Spawn the tiles for this chunk
     for x in 0..CHUNK_SIZE.x {
         for y in 0..CHUNK_SIZE.y {
             let tile_pos = TilePos { x, y };
 
-            // Generate texture index based on position for variety
             let chunk_x = chunk_pos.x.wrapping_mul(CHUNK_SIZE.x as i32) as u32;
             let chunk_y = chunk_pos.y.wrapping_mul(CHUNK_SIZE.y as i32) as u32;
             let texture_index = x
@@ -174,7 +168,7 @@ fn spawn_chunk(commands: &mut Commands, game_assets: &GameAssets, chunk_pos: IVe
             tile_size: TILE_SIZE,
             transform,
             render_settings: TilemapRenderSettings {
-                render_chunk_size: RENDER_CHUNK_SIZE,
+                render_chunk_size: CHUNK_SIZE,
                 ..Default::default()
             },
             ..Default::default()
@@ -192,9 +186,12 @@ fn spawn_chunks_around_camera(
     for transform in camera_query.iter() {
         let camera_chunk_pos = camera_pos_to_chunk_pos(&transform.translation.xy());
 
-        // Spawn chunks in a 5x5 grid around the camera (2 chunks in each direction)
-        for y in (camera_chunk_pos.y - 2)..=(camera_chunk_pos.y + 2) {
-            for x in (camera_chunk_pos.x - 2)..=(camera_chunk_pos.x + 2) {
+        for y in (camera_chunk_pos.y - CHUNK_RENDER_DISTANCE)
+            ..=(camera_chunk_pos.y + CHUNK_RENDER_DISTANCE)
+        {
+            for x in (camera_chunk_pos.x - CHUNK_RENDER_DISTANCE)
+                ..=(camera_chunk_pos.x + CHUNK_RENDER_DISTANCE)
+            {
                 let chunk_pos = IVec2::new(x, y);
                 if !chunk_manager.spawned_chunks.contains(&chunk_pos) {
                     chunk_manager.spawned_chunks.insert(chunk_pos);
@@ -212,14 +209,20 @@ fn despawn_outofrange_chunks(
     mut chunk_manager: ResMut<ChunkManager>,
 ) {
     for camera_transform in camera_query.iter() {
+        let camera_chunk_pos = camera_pos_to_chunk_pos(&camera_transform.translation.xy());
+
         for (entity, chunk_transform) in chunks_query.iter() {
             let chunk_pos = chunk_transform.translation.xy();
-            let distance = camera_transform.translation.xy().distance(chunk_pos);
+            let x = (chunk_pos.x / (CHUNK_SIZE.x as f32 * TILE_SIZE.x)).floor() as i32;
+            let y = (chunk_pos.y / (CHUNK_SIZE.y as f32 * TILE_SIZE.y)).floor() as i32;
+            let chunk_coord = IVec2::new(x, y);
+
+            let distance = (chunk_coord.x - camera_chunk_pos.x)
+                .abs()
+                .max((chunk_coord.y - camera_chunk_pos.y).abs());
 
             if distance > CHUNK_RENDER_DISTANCE {
-                let x = (chunk_pos.x / (CHUNK_SIZE.x as f32 * TILE_SIZE.x)).floor() as i32;
-                let y = (chunk_pos.y / (CHUNK_SIZE.y as f32 * TILE_SIZE.y)).floor() as i32;
-                chunk_manager.spawned_chunks.remove(&IVec2::new(x, y));
+                chunk_manager.spawned_chunks.remove(&chunk_coord);
                 commands.entity(entity).despawn();
             }
         }
