@@ -11,8 +11,8 @@ use bevy_panic_handler::PanicHandlerBuilder;
 use bevy_seedling::prelude::*;
 
 const TILE_SIZE: TilemapTileSize = TilemapTileSize { x: 16.0, y: 16.0 };
-const CHUNK_SIZE: UVec2 = UVec2 { x: 6, y: 6 };
-const CHUNK_RENDER_DISTANCE: i32 = 3;
+const CHUNK_SIZE: UVec2 = UVec2 { x: 9, y: 9 };
+const CHUNK_RENDER_DISTANCE: UVec2 = UVec2 { x: 2, y: 1 };
 
 fn main() {
     App::new()
@@ -90,14 +90,14 @@ struct ChunkManager {
 #[derive(Component)]
 struct ChunkMarker;
 
-fn setup_camera(mut commands: Commands, window: Single<&Window>) {
-    let width = (window.width() / 5.0) as i32;
-    let height = (window.height() / 5.0) as i32;
-
+fn setup_camera(mut commands: Commands) {
     commands.spawn((
         Camera2d,
         Msaa::Off,
-        PixelZoom::FitSize { width, height },
+        PixelZoom::FitSize {
+            width: 320,
+            height: 180,
+        },
         PixelViewport,
     ));
 }
@@ -201,11 +201,11 @@ fn spawn_chunks_around_camera(
     for transform in camera_query.iter() {
         let camera_chunk_pos = camera_pos_to_chunk_pos(&transform.translation.xy());
 
-        for y in (camera_chunk_pos.y - CHUNK_RENDER_DISTANCE)
-            ..=(camera_chunk_pos.y + CHUNK_RENDER_DISTANCE)
+        for y in (camera_chunk_pos.y - CHUNK_RENDER_DISTANCE.y as i32)
+            ..=(camera_chunk_pos.y + CHUNK_RENDER_DISTANCE.y as i32)
         {
-            for x in (camera_chunk_pos.x - CHUNK_RENDER_DISTANCE)
-                ..=(camera_chunk_pos.x + CHUNK_RENDER_DISTANCE)
+            for x in (camera_chunk_pos.x - CHUNK_RENDER_DISTANCE.x as i32)
+                ..=(camera_chunk_pos.x + CHUNK_RENDER_DISTANCE.x as i32)
             {
                 let chunk_pos = IVec2::new(x, y);
                 if !chunk_manager.spawned_chunks.contains(&chunk_pos) {
@@ -232,11 +232,12 @@ fn despawn_outofrange_chunks(
             let y = (chunk_pos.y / (CHUNK_SIZE.y as f32 * TILE_SIZE.y)).floor() as i32;
             let chunk_coord = IVec2::new(x, y);
 
-            let distance = (chunk_coord.x - camera_chunk_pos.x)
-                .abs()
-                .max((chunk_coord.y - camera_chunk_pos.y).abs());
+            let distance_x = (chunk_coord.x - camera_chunk_pos.x).abs();
+            let distance_y = (chunk_coord.y - camera_chunk_pos.y).abs();
 
-            if distance > CHUNK_RENDER_DISTANCE {
+            if distance_x > CHUNK_RENDER_DISTANCE.x as i32
+                || distance_y > CHUNK_RENDER_DISTANCE.y as i32
+            {
                 chunk_manager.spawned_chunks.remove(&chunk_coord);
                 commands.entity(entity).despawn();
             }
