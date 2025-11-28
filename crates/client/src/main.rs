@@ -11,7 +11,7 @@ use bevy_panic_handler::PanicHandlerBuilder;
 use bevy_seedling::prelude::*;
 
 const TILE_SIZE: TilemapTileSize = TilemapTileSize { x: 16.0, y: 16.0 };
-const CHUNK_SIZE: UVec2 = UVec2 { x: 9, y: 9 };
+const CHUNK_SIZE: UVec2 = UVec2 { x: 10, y: 10 };
 const CHUNK_RENDER_DISTANCE: UVec2 = UVec2 { x: 2, y: 1 };
 
 fn main() {
@@ -21,7 +21,7 @@ fn main() {
                 .set(WindowPlugin {
                     primary_window: Some(Window {
                         present_mode: PresentMode::AutoVsync,
-                        mode: WindowMode::BorderlessFullscreen(MonitorSelection::Primary),
+                        mode: WindowMode::BorderlessFullscreen(MonitorSelection::Current),
                         title: "Moonlit".to_string(),
                         ..default()
                     }),
