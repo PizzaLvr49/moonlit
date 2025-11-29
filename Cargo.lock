@@ -3406,6 +3406,7 @@ dependencies = [
  "bevy_modern_pixel_camera",
  "bevy_rand",
  "bevy_seedling",
+ "noisy_bevy",
  "rand",
 ]
 
@@ -3534,6 +3535,15 @@ name = "nohash-hasher"
 version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2bf50223579dc7cdcfb3bfcacf7069ff68243f8c363f62ffa99cf000a6b9c451"
+
+[[package]]
+name = "noisy_bevy"
+version = "0.11.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7b586a7d36eab9a74f83d6438ea384faec89d4fb6c05500a3528c0ba733cb209"
+dependencies = [
+ "bevy",
+]
 
 [[package]]
 name = "nom"

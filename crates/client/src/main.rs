@@ -12,6 +12,7 @@ use bevy_modern_pixel_camera::prelude::*;
 use bevy_panic_handler::PanicHandlerBuilder;
 use bevy_rand::prelude::*;
 use bevy_seedling::prelude::*;
+use noisy_bevy::fbm_simplex_2d_seeded;
 use rand::RngCore;
 
 const TILE_SIZE: TilemapTileSize = TilemapTileSize { x: 16.0, y: 16.0 };
@@ -160,58 +161,30 @@ fn camera_pos_to_chunk_pos(camera_pos: &Vec2) -> IVec2 {
     camera_pos / (chunk_size * tile_size)
 }
 
-fn hash(x: i32, y: i32, seed: u64) -> f32 {
-    let mut n = seed
-        .wrapping_add((x as u64).wrapping_mul(374761393))
-        .wrapping_add((y as u64).wrapping_mul(668265263));
-    n ^= n >> 13;
-    n = n.wrapping_mul(1274126177);
-    (n as f32 / u64::MAX as f32) * 2.0 - 1.0
-}
-
-fn noise(x: f32, y: f32, seed: u64) -> f32 {
-    let xi = x.floor() as i32;
-    let yi = y.floor() as i32;
-
-    let xf = x - xi as f32;
-    let yf = y - yi as f32;
-
-    let u = xf * xf * (3.0 - 2.0 * xf);
-    let v = yf * yf * (3.0 - 2.0 * yf);
-
-    let a = hash(xi, yi, seed);
-    let b = hash(xi + 1, yi, seed);
-    let c = hash(xi, yi + 1, seed);
-    let d = hash(xi + 1, yi + 1, seed);
-
-    let x1 = a * (1.0 - u) + b * u;
-    let x2 = c * (1.0 - u) + d * u;
-    x1 * (1.0 - v) + x2 * v
-}
-
-fn fbm(x: f32, y: f32, octaves: u32, seed: u64) -> f32 {
-    let mut value = 0.0;
+// Stable FBM helper
+fn fbm_safe(pos: Vec2, octaves: usize, lacunarity: f32, gain: f32, seed: u64) -> f32 {
+    let scaled_pos = pos / 10.0;
+    let seed_f = (seed % 10000) as f32 / 10000.0;
+    let mut sum = 0.0;
     let mut amplitude = 1.0;
     let mut frequency = 1.0;
-    let mut max_value = 0.0;
 
-    for i in 0..octaves {
-        value += noise(x * frequency, y * frequency, seed + i as u64) * amplitude;
-        max_value += amplitude;
-        amplitude *= 0.5;
-        frequency *= 2.0;
+    for _ in 0..octaves {
+        let value = fbm_simplex_2d_seeded(scaled_pos * frequency, 1, lacunarity, gain, seed_f);
+        sum += value * amplitude;
+        amplitude *= gain;
+        frequency *= lacunarity;
     }
 
-    value / max_value
+    sum.clamp(-1.0, 1.0)
 }
 
 fn get_tile_type(world_x: i32, world_y: i32, seed: u64) -> u32 {
     let scale = 0.08;
-    let x = world_x as f32 * scale;
-    let y = world_y as f32 * scale;
+    let pos = Vec2::new(world_x as f32 * scale, world_y as f32 * scale);
 
-    let terrain = fbm(x, y, 4, seed);
-    let moisture = fbm(x + 100.0, y + 100.0, 3, seed + 1000);
+    let terrain = fbm_safe(pos, 4, 2.0, 0.5, seed);
+    let moisture = fbm_safe(pos + Vec2::splat(100.0), 3, 2.0, 0.5, seed + 1000);
 
     if terrain < -0.25 {
         1

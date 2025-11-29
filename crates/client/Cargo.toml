@@ -15,6 +15,7 @@ bevy_asset_loader = { workspace = true }
 bevy_modern_pixel_camera = { workspace = true }
 bevy_rand = { workspace = true }
 rand = { workspace = true }
+noisy_bevy = { workspace = true }
 
 [features]
 default = []
