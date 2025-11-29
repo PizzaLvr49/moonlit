@@ -6,14 +6,17 @@ use bevy::window::{PresentMode, WindowMode};
 use bevy_asset_loader::prelude::*;
 use bevy_ecs_tilemap::prelude::*;
 use bevy_egui::EguiPlugin;
+use bevy_enhanced_input::prelude::*;
 use bevy_inspector_egui::quick::WorldInspectorPlugin;
 use bevy_modern_pixel_camera::prelude::*;
 use bevy_panic_handler::PanicHandlerBuilder;
+use bevy_rand::prelude::*;
 use bevy_seedling::prelude::*;
+use rand::RngCore;
 
 const TILE_SIZE: TilemapTileSize = TilemapTileSize { x: 16.0, y: 16.0 };
 const CHUNK_SIZE: UVec2 = UVec2 { x: 10, y: 10 };
-const CHUNK_RENDER_DISTANCE: UVec2 = UVec2 { x: 2, y: 1 };
+const CHUNK_RENDER_DISTANCE: UVec2 = UVec2 { x: 2, y: 2 };
 
 fn main() {
     App::new()
@@ -38,8 +41,8 @@ fn main() {
         .add_plugins(FpsOverlayPlugin {
             config: FpsOverlayConfig {
                 frame_time_graph_config: FrameTimeGraphConfig {
-                    min_fps: 30.0,
-                    target_fps: 60.0,
+                    min_fps: 60.0,
+                    target_fps: 180.0,
                     ..default()
                 },
                 text_color: Color::WHITE,
@@ -50,15 +53,19 @@ fn main() {
                 ..default()
             },
         })
+        .add_plugins(EnhancedInputPlugin)
+        .add_plugins(EntropyPlugin::<WyRand>::with_seed([42; 8]))
         .init_state::<GameState>()
         .insert_resource(ChunkManager::default())
+        .insert_resource(WorldSeed::default())
         .add_loading_state(
             LoadingState::new(GameState::Loading)
                 .continue_to_state(GameState::Playing)
                 .load_collection::<GameAssets>(),
         )
+        .add_input_context::<CameraController>()
         .add_systems(OnEnter(GameState::Playing), setup_camera)
-        .add_systems(Update, camera_movement.run_if(in_state(GameState::Playing)))
+        .add_observer(camera_movement)
         .add_systems(
             Update,
             spawn_chunks_around_camera.run_if(in_state(GameState::Playing)),
@@ -83,15 +90,36 @@ struct GameAssets {
     tileset: Handle<Image>,
 }
 
+#[derive(Component)]
+struct CameraController;
+
+#[derive(InputAction)]
+#[action_output(Vec2)]
+struct CameraMovement;
+
 #[derive(Default, Debug, Resource)]
 struct ChunkManager {
     pub spawned_chunks: HashSet<IVec2>,
 }
 
+#[derive(Default, Resource)]
+struct WorldSeed {
+    seed: u64,
+}
+
 #[derive(Component)]
 struct ChunkMarker;
 
-fn setup_camera(mut commands: Commands) {
+#[derive(Component)]
+struct TerrainChunk;
+
+fn setup_camera(
+    mut commands: Commands,
+    mut global_rng: Single<&mut WyRand, With<GlobalRng>>,
+    mut world_seed: ResMut<WorldSeed>,
+) {
+    world_seed.seed = global_rng.next_u64();
+
     commands.spawn((
         Camera2d,
         Msaa::Off,
@@ -100,46 +128,110 @@ fn setup_camera(mut commands: Commands) {
             height: 180,
         },
         PixelViewport,
+        CameraController,
+        actions!(CameraController[
+            (
+                Action::<CameraMovement>::new(),
+                DeadZone::default(),
+                SmoothNudge::default(),
+                Bindings::spawn((
+                    Cardinal::wasd_keys(),
+                    Cardinal::arrows(),
+                    Axial::left_stick(),
+                )),
+            ),
+        ]),
     ));
 }
 
 fn camera_movement(
+    input: On<Fire<CameraMovement>>,
     time: Res<Time>,
-    keyboard_input: Res<ButtonInput<KeyCode>>,
-    mut query: Query<&mut Transform, With<Camera>>,
+    mut transform: Single<&mut Transform, With<Camera>>,
 ) {
-    let mut direction = Vec3::ZERO;
-    let speed = 200.0;
-
-    if keyboard_input.pressed(KeyCode::KeyW) {
-        direction.y += 1.0;
-    }
-    if keyboard_input.pressed(KeyCode::KeyS) {
-        direction.y -= 1.0;
-    }
-    if keyboard_input.pressed(KeyCode::KeyA) {
-        direction.x -= 1.0;
-    }
-    if keyboard_input.pressed(KeyCode::KeyD) {
-        direction.x += 1.0;
-    }
-
-    if direction != Vec3::ZERO {
-        direction = direction.normalize();
-        for mut transform in query.iter_mut() {
-            transform.translation += direction * speed * time.delta_secs();
-        }
-    }
+    let translation_amount = time.delta_secs() * 200.0;
+    transform.translation += Vec3::from((input.value * translation_amount, 0.0));
 }
 
 fn camera_pos_to_chunk_pos(camera_pos: &Vec2) -> IVec2 {
     let camera_pos = camera_pos.as_ivec2();
-    let chunk_size: IVec2 = IVec2::new(CHUNK_SIZE.x as i32, CHUNK_SIZE.y as i32);
-    let tile_size: IVec2 = IVec2::new(TILE_SIZE.x as i32, TILE_SIZE.y as i32);
+    let chunk_size = IVec2::new(CHUNK_SIZE.x as i32, CHUNK_SIZE.y as i32);
+    let tile_size = IVec2::new(TILE_SIZE.x as i32, TILE_SIZE.y as i32);
     camera_pos / (chunk_size * tile_size)
 }
 
-fn spawn_chunk(commands: &mut Commands, game_assets: &GameAssets, chunk_pos: IVec2) {
+fn hash(x: i32, y: i32, seed: u64) -> f32 {
+    let mut n = seed
+        .wrapping_add((x as u64).wrapping_mul(374761393))
+        .wrapping_add((y as u64).wrapping_mul(668265263));
+    n ^= n >> 13;
+    n = n.wrapping_mul(1274126177);
+    (n as f32 / u64::MAX as f32) * 2.0 - 1.0
+}
+
+fn noise(x: f32, y: f32, seed: u64) -> f32 {
+    let xi = x.floor() as i32;
+    let yi = y.floor() as i32;
+
+    let xf = x - xi as f32;
+    let yf = y - yi as f32;
+
+    let u = xf * xf * (3.0 - 2.0 * xf);
+    let v = yf * yf * (3.0 - 2.0 * yf);
+
+    let a = hash(xi, yi, seed);
+    let b = hash(xi + 1, yi, seed);
+    let c = hash(xi, yi + 1, seed);
+    let d = hash(xi + 1, yi + 1, seed);
+
+    let x1 = a * (1.0 - u) + b * u;
+    let x2 = c * (1.0 - u) + d * u;
+    x1 * (1.0 - v) + x2 * v
+}
+
+fn fbm(x: f32, y: f32, octaves: u32, seed: u64) -> f32 {
+    let mut value = 0.0;
+    let mut amplitude = 1.0;
+    let mut frequency = 1.0;
+    let mut max_value = 0.0;
+
+    for i in 0..octaves {
+        value += noise(x * frequency, y * frequency, seed + i as u64) * amplitude;
+        max_value += amplitude;
+        amplitude *= 0.5;
+        frequency *= 2.0;
+    }
+
+    value / max_value
+}
+
+fn get_tile_type(world_x: i32, world_y: i32, seed: u64) -> u32 {
+    let scale = 0.08;
+    let x = world_x as f32 * scale;
+    let y = world_y as f32 * scale;
+
+    let terrain = fbm(x, y, 4, seed);
+    let moisture = fbm(x + 100.0, y + 100.0, 3, seed + 1000);
+
+    if terrain < -0.25 {
+        1
+    } else if terrain < 0.0 {
+        if moisture > 0.3 { 0 } else { 2 }
+    } else if terrain < 0.3 {
+        if moisture > 0.1 { 0 } else { 2 }
+    } else if terrain < 0.55 {
+        if moisture < -0.2 { 4 } else { 3 }
+    } else {
+        5
+    }
+}
+
+fn spawn_chunk(
+    commands: &mut Commands,
+    game_assets: &GameAssets,
+    world_seed: u64,
+    chunk_pos: IVec2,
+) {
     let tilemap_entity = commands.spawn_empty().id();
     let mut tile_storage = TileStorage::empty(CHUNK_SIZE.into());
 
@@ -147,13 +239,10 @@ fn spawn_chunk(commands: &mut Commands, game_assets: &GameAssets, chunk_pos: IVe
         for y in 0..CHUNK_SIZE.y {
             let tile_pos = TilePos { x, y };
 
-            let chunk_x = chunk_pos.x.wrapping_mul(CHUNK_SIZE.x as i32) as u32;
-            let chunk_y = chunk_pos.y.wrapping_mul(CHUNK_SIZE.y as i32) as u32;
-            let texture_index = x
-                .wrapping_add(y)
-                .wrapping_add(chunk_x)
-                .wrapping_add(chunk_y)
-                % 6;
+            let world_x = chunk_pos.x * CHUNK_SIZE.x as i32 + x as i32;
+            let world_y = chunk_pos.y * CHUNK_SIZE.y as i32 + y as i32;
+
+            let texture_index = get_tile_type(world_x, world_y, world_seed);
 
             let tile_entity = commands
                 .spawn(TileBundle {
@@ -190,12 +279,14 @@ fn spawn_chunk(commands: &mut Commands, game_assets: &GameAssets, chunk_pos: IVe
             ..Default::default()
         },
         ChunkMarker,
+        TerrainChunk,
     ));
 }
 
 fn spawn_chunks_around_camera(
     mut commands: Commands,
     game_assets: Res<GameAssets>,
+    world_seed: Res<WorldSeed>,
     camera_query: Query<&Transform, With<Camera>>,
     mut chunk_manager: ResMut<ChunkManager>,
 ) {
@@ -211,7 +302,7 @@ fn spawn_chunks_around_camera(
                 let chunk_pos = IVec2::new(x, y);
                 if !chunk_manager.spawned_chunks.contains(&chunk_pos) {
                     chunk_manager.spawned_chunks.insert(chunk_pos);
-                    spawn_chunk(&mut commands, &game_assets, chunk_pos);
+                    spawn_chunk(&mut commands, &game_assets, world_seed.seed, chunk_pos);
                 }
             }
         }
@@ -233,11 +324,8 @@ fn despawn_outofrange_chunks(
             let y = (chunk_pos.y / (CHUNK_SIZE.y as f32 * TILE_SIZE.y)).floor() as i32;
             let chunk_coord = IVec2::new(x, y);
 
-            let distance_x = (chunk_coord.x - camera_chunk_pos.x).abs();
-            let distance_y = (chunk_coord.y - camera_chunk_pos.y).abs();
-
-            if distance_x > CHUNK_RENDER_DISTANCE.x as i32
-                || distance_y > CHUNK_RENDER_DISTANCE.y as i32
+            if (chunk_coord.x - camera_chunk_pos.x).abs() > CHUNK_RENDER_DISTANCE.x as i32
+                || (chunk_coord.y - camera_chunk_pos.y).abs() > CHUNK_RENDER_DISTANCE.y as i32
             {
                 chunk_manager.spawned_chunks.remove(&chunk_coord);
                 commands.entity(entity).despawn();

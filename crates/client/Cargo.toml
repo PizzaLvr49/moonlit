@@ -13,6 +13,8 @@ bevy_enhanced_input = { workspace = true }
 bevy_ecs_tilemap = { workspace = true }
 bevy_asset_loader = { workspace = true }
 bevy_modern_pixel_camera = { workspace = true }
+bevy_rand = { workspace = true }
+rand = { workspace = true }
 
 [features]
 default = []
